@@ -10,12 +10,18 @@ import {
   XCircle,
   ShoppingBag,
 } from "lucide-react";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import Layout from "../../components/layout/Layout";
 import { fetchMyOrders } from "../../redux/slices/orderSlice";
 import { formatPrice } from "../../utils/formatPrice";
 
 const statusConfig = {
+  placed: {
+    label: "Placed",
+    icon: Clock,
+    bg: "bg-yellow-100 dark:bg-yellow-950",
+    text: "text-yellow-700 dark:text-yellow-400",
+  },
   pending: {
     label: "Pending",
     icon: Clock,
@@ -51,7 +57,10 @@ const statusConfig = {
 function OrderCard({ order }) {
   const [expanded, setExpanded] = useState(false);
 
-  const status = statusConfig[order.status?.toLowerCase()] || statusConfig.pending;
+  const status =
+    statusConfig[
+      (order.orderStatus || order.status || "pending").toLowerCase()
+    ] || statusConfig.pending;
   const StatusIcon = status.icon;
   const items = order.items || order.products || [];
   const orderDate = order.createdAt
@@ -111,22 +120,34 @@ function OrderCard({ order }) {
         <div className="border-t border-zinc-100 dark:border-zinc-800 px-5 sm:px-6 py-5">
           {/* Items */}
           <div className="space-y-4">
-            {items.map((item, idx) => {
+            {items.map((item) => {
               const product = item.product || item;
               const image =
-                product.images?.[0] || product.image || "/placeholder.jpg";
+                product.thumbnail ||
+                product.images?.[0] ||
+                product.image ||
+                item.thumbnail ||
+                "/placeholder.jpg";
+              const productName =
+                product.title || product.name || item.title || "Product";
               return (
-                <div key={idx} className="flex gap-4">
+                <div
+                  key={
+                    item._id ||
+                    `${item.product?._id || item.product || productName}-${item.size || ""}`
+                  }
+                  className="flex gap-4"
+                >
                   <div className="w-16 h-20 rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 shrink-0">
                     <img
                       src={image}
-                      alt={product.name || "Product"}
+                      alt={productName}
                       className="w-full h-full object-cover"
                     />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
-                      {product.name || "Product"}
+                      {productName}
                     </p>
                     {item.size && (
                       <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
@@ -152,14 +173,18 @@ function OrderCard({ order }) {
                 Shipping Address
               </h4>
               <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                {order.shippingAddress.name && `${order.shippingAddress.name}, `}
+                {order.shippingAddress.name &&
+                  `${order.shippingAddress.name}, `}
                 {order.shippingAddress.address || order.shippingAddress.street}
                 {order.shippingAddress.city &&
                   `, ${order.shippingAddress.city}`}
                 {order.shippingAddress.state &&
                   `, ${order.shippingAddress.state}`}
-                {order.shippingAddress.zip &&
-                  ` - ${order.shippingAddress.zip}`}
+                {order.shippingAddress.zip && ` - ${order.shippingAddress.zip}`}
+                {order.shippingAddress.zipCode &&
+                  ` - ${order.shippingAddress.zipCode}`}
+                {order.shippingAddress.country &&
+                  `, ${order.shippingAddress.country}`}
               </p>
             </div>
           )}
@@ -187,13 +212,18 @@ function SkeletonOrderCard() {
 
 export default function Orders() {
   const dispatch = useDispatch();
-  const { orders, loading } = useSelector((state) => state.orders);
+  const {
+    orders: rawOrders,
+    loading,
+    error,
+  } = useSelector((state) => state.orders);
+  const orders = Array.isArray(rawOrders) ? rawOrders : [];
 
   useEffect(() => {
     dispatch(fetchMyOrders());
   }, [dispatch]);
 
-  if (!loading && (!orders || orders.length === 0)) {
+  if (!loading && !error && orders.length === 0) {
     return (
       <Layout>
         <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 bg-white dark:bg-zinc-950">
@@ -230,13 +260,39 @@ export default function Orders() {
             Track and manage your orders
           </p>
 
+          {error && (
+            <div
+              role="alert"
+              className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
+            >
+              <span>
+                {typeof error === "string"
+                  ? error
+                  : "Unable to load your orders."}
+              </span>
+              <button
+                onClick={() => dispatch(fetchMyOrders())}
+                className="font-semibold underline underline-offset-4"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
           <div className="space-y-4">
             {loading
               ? Array.from({ length: 3 }).map((_, i) => (
                   <SkeletonOrderCard key={i} />
                 ))
-              : orders?.map((order) => (
-                  <OrderCard key={order._id} order={order} />
+              : orders.map((order, index) => (
+                  <OrderCard
+                    key={
+                      order._id ||
+                      order.id ||
+                      `${order.createdAt || "order"}-${index}`
+                    }
+                    order={order}
+                  />
                 ))}
           </div>
         </div>

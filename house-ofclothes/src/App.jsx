@@ -1,19 +1,8 @@
-import React from "react";
-import AppRoutes from "./routes/AppRoutes";
-import { ThemeProvider } from "./context/ThemeContext";
-import { AuthProvider } from "./context/AuthContext";
-import { ShopProvider } from "./context/ShopContext";
-
-function App() {
-  return ( 
-    <ThemeProvider>
-      <AuthProvider>
-        <ShopProvider>
-          <AppRoutes />
-        </ShopProvider>
-      </AuthProvider>
-    </ThemeProvider>
+import AppRoutes from './routes/AppRoutes';
+export default function App() {
+  return (
+    <div className="min-h-screen font-sans text-[#22231f] dark:text-[#f4f2ec]">
+      <AppRoutes />
+    </div>
   );
 }
-
-export default App;

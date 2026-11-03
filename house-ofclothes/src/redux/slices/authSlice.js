@@ -34,7 +34,7 @@ export const signupUser = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const data = await authService.signup(credentials);
-      return data; // { user, token }
+      return data.data || data;
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || err.message || 'Signup failed',
@@ -48,7 +48,7 @@ export const loginUser = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const data = await authService.login(credentials);
-      return data; // { user, token }
+      return data.data || data;
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || err.message || 'Login failed',
@@ -61,8 +61,8 @@ export const fetchCurrentUser = createAsyncThunk(
   'auth/fetchCurrentUser',
   async (_, { rejectWithValue }) => {
     try {
-      const data = await authService.getMe();
-      return data; // user object
+      const data = await authService.getProfile();
+      return data.data || data;
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || err.message || 'Failed to fetch user',
@@ -76,7 +76,7 @@ export const updateUserProfile = createAsyncThunk(
   async (profileData, { rejectWithValue }) => {
     try {
       const data = await authService.updateProfile(profileData);
-      return data; // updated user
+      return data.data || data;
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || err.message || 'Profile update failed',

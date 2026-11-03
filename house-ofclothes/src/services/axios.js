@@ -11,7 +11,15 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const storedToken = localStorage.getItem("hoc_token");
+    let token = null;
+    if (storedToken) {
+      try {
+        token = JSON.parse(storedToken);
+      } catch {
+        token = storedToken;
+      }
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -25,8 +33,8 @@ api.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       // Token invalid or expired
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+      localStorage.removeItem("hoc_token");
+      localStorage.removeItem("hoc_user");
     }
     return Promise.reject(error);
   }

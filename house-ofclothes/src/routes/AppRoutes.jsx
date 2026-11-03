@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
 import Home from "../pages/Home/Home";
 import Products from "../pages/Products/Products";
 import ProductDetails from "../pages/ProductDetails/ProductDetails";
@@ -11,8 +10,7 @@ import Profile from "../pages/Profile/Profile";
 import Orders from "../pages/Orders/Orders";
 import Checkout from "../pages/Checkout/Checkout";
 import NotFound from "../pages/NotFound/NotFound";
-
-function AppRoutes() {
+export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
@@ -31,5 +29,3 @@ function AppRoutes() {
     </BrowserRouter>
   );
 }
-
-export default AppRoutes;

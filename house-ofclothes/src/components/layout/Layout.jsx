@@ -1,17 +1,13 @@
-import React from "react";
-import Navbar from "./Navbar";
-import Footer from "./Footer";
-
-const Layout = ({ children }) => {
+import Navbar from './Navbar';
+import Footer from './Footer';
+export default function Layout({ children }) {
   return (
-    <div className="min-h-screen flex flex-col bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-200">
+    <div className="min-h-screen bg-[#f8f7f3] font-sans text-[#22231f] transition-colors dark:bg-[#171815] dark:text-[#f4f2ec]">
       <Navbar />
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="mx-auto w-[calc(100%-2rem)] max-w-[1240px] md:w-[calc(100%-4rem)]">
         {children}
       </main>
       <Footer />
     </div>
   );
-};
-
-export default Layout;
+}

@@ -58,6 +58,7 @@ const initialState = {
   totalProducts: 0,
   loading: false,
   error: null,
+  productsRequestId: null,
   filters: {
     category: '',
     sort: '',
@@ -89,19 +90,34 @@ const productSlice = createSlice({
   extraReducers: (builder) => {
     // ---- fetchProducts ----
     builder
-      .addCase(fetchProducts.pending, (state) => {
+      .addCase(fetchProducts.pending, (state, { meta }) => {
         state.loading = true;
         state.error = null;
+        state.productsRequestId = meta.requestId;
       })
-      .addCase(fetchProducts.fulfilled, (state, { payload }) => {
+      .addCase(fetchProducts.fulfilled, (state, { payload, meta }) => {
+        if (state.productsRequestId !== meta.requestId) return;
         state.loading = false;
-        state.products = payload.products || payload.data || [];
-        state.totalPages = payload.totalPages || 1;
-        state.currentPage = payload.currentPage || payload.page || 1;
-        state.totalProducts = payload.totalProducts || payload.total || state.products.length;
+        state.productsRequestId = null;
+        const fetchedProducts = payload.products || payload.data || [];
+        state.products =
+          Number(meta.arg?.page) > 1
+            ? [...state.products, ...fetchedProducts]
+            : fetchedProducts;
+        state.totalPages =
+          payload.totalPages || payload.pagination?.totalPages || 1;
+        state.currentPage =
+          payload.currentPage || payload.pagination?.page || payload.page || 1;
+        state.totalProducts =
+          payload.totalProducts ||
+          payload.total ||
+          payload.pagination?.total ||
+          state.products.length;
       })
-      .addCase(fetchProducts.rejected, (state, { payload }) => {
+      .addCase(fetchProducts.rejected, (state, { payload, meta }) => {
+        if (state.productsRequestId !== meta.requestId) return;
         state.loading = false;
+        state.productsRequestId = null;
         state.error = payload;
       });
 

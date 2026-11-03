@@ -1,10 +1,13 @@
 import { useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { Heart, ShoppingBag, Trash2 } from "lucide-react";
 import Layout from "../../components/layout/Layout";
 import ProductCard from "../../components/product/ProductCard";
-import { fetchWishlist, toggleWishlistItem } from "../../redux/slices/wishlistSlice";
+import {
+  fetchWishlist,
+  toggleWishlistItem,
+} from "../../redux/slices/wishlistSlice";
 import { addItemToCart } from "../../redux/slices/cartSlice";
 import { addToast } from "../../redux/slices/uiSlice";
 
@@ -36,24 +39,28 @@ export default function Wishlist() {
         id: Date.now(),
         type: "success",
         message: "Removed from wishlist",
-      })
+      }),
     );
   };
 
-  const handleMoveToCart = (product) => {
+  const handleMoveToCart = (item) => {
+    const product = item.product || item;
     dispatch(
       addItemToCart({
-        productId: product._id || product.product?._id,
+        productId: product._id || product.productId,
         quantity: 1,
-      })
+        name: product.title || product.name,
+        price: product.price,
+        image: product.thumbnail || product.images?.[0] || product.image,
+      }),
     );
-    dispatch(toggleWishlistItem(product._id || product.product?._id));
+    dispatch(toggleWishlistItem(product));
     dispatch(
       addToast({
         id: Date.now(),
         type: "success",
         message: "Moved to cart!",
-      })
+      }),
     );
   };
 
@@ -99,7 +106,9 @@ export default function Wishlist() {
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
             {loading
-              ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
+              ? Array.from({ length: 8 }).map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))
               : products?.map((item) => {
                   const product = item.product || item;
                   return (
@@ -117,7 +126,7 @@ export default function Wishlist() {
                         <button
                           onClick={() =>
                             handleRemoveFromWishlist(
-                              product._id || item.product?._id
+                              product._id || item.product?._id,
                             )
                           }
                           className="shrink-0 inline-flex items-center justify-center h-9 w-9 rounded-lg bg-white/20 text-white hover:bg-red-500 transition-colors"

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate, Link } from "react-router";
+import { useNavigate, Link } from "react-router-dom";
 import {
   MapPin,
   CreditCard,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Layout from "../../components/layout/Layout";
 import { placeOrder } from "../../redux/slices/orderSlice";
+import { fetchCurrentUser } from "../../redux/slices/authSlice";
 import { addToast } from "../../redux/slices/uiSlice";
 import { formatPrice } from "../../utils/formatPrice";
 
@@ -21,28 +22,68 @@ const steps = [
   { id: 3, label: "Review", icon: ClipboardCheck },
 ];
 
+const getShippingFromProfile = (profile, current = {}) => ({
+  ...current,
+  name: profile?.name || current.name || "",
+  phone: profile?.phone || current.phone || "",
+  address:
+    profile?.address?.street ||
+    (typeof profile?.address === "string" ? profile.address : "") ||
+    current.address ||
+    "",
+  city: profile?.address?.city || current.city || "",
+  state: profile?.address?.state || current.state || "",
+  zip: profile?.address?.zipCode || profile?.address?.zip || current.zip || "",
+  country: profile?.address?.country || current.country || "India",
+});
+
 export default function Checkout() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { items, totalAmount } = useSelector((state) => state.cart);
   const { loading: orderLoading } = useSelector((state) => state.orders);
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [shipping, setShipping] = useState({
-    name: "",
-    phone: "",
-    address: "",
-    city: "",
-    state: "",
-    zip: "",
-  });
+  const [shipping, setShipping] = useState(() => getShippingFromProfile(user));
   const [payment, setPayment] = useState("cod");
   const [errors, setErrors] = useState({});
 
-  const subtotal = totalAmount || items?.reduce((sum, item) => {
-    const price = item.product?.price || item.price || 0;
-    return sum + price * (item.quantity || 1);
-  }, 0) || 0;
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    let active = true;
+
+    dispatch(fetchCurrentUser())
+      .unwrap()
+      .then((profile) => {
+        if (active) {
+          setShipping((current) => getShippingFromProfile(profile, current));
+        }
+      })
+      .catch((profileError) => {
+        dispatch(
+          addToast({
+            type: "error",
+            message:
+              profileError?.message ||
+              profileError ||
+              "Could not load your saved shipping address.",
+          }),
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [dispatch, isAuthenticated]);
+
+  const subtotal =
+    totalAmount ||
+    items?.reduce((sum, item) => {
+      const price = item.product?.price || item.price || 0;
+      return sum + price * (item.quantity || 1);
+    }, 0) ||
+    0;
 
   const shippingCost = subtotal > 999 ? 0 : 99;
   const tax = Math.round(subtotal * 0.05);
@@ -57,6 +98,7 @@ export default function Checkout() {
     if (!shipping.address.trim()) errs.address = "Address is required";
     if (!shipping.city.trim()) errs.city = "City is required";
     if (!shipping.state.trim()) errs.state = "State is required";
+    if (!shipping.country.trim()) errs.country = "Country is required";
     if (!shipping.zip.trim()) errs.zip = "PIN code is required";
     else if (!/^\d{6}$/.test(shipping.zip.replace(/\s/g, "")))
       errs.zip = "Enter a valid 6-digit PIN code";
@@ -80,23 +122,22 @@ export default function Checkout() {
     try {
       await dispatch(
         placeOrder({
-          shippingAddress: shipping,
+          shippingAddress: {
+            street: shipping.address,
+            city: shipping.city,
+            state: shipping.state,
+            zipCode: shipping.zip,
+            country: shipping.country,
+          },
           paymentMethod: payment,
-          items: items?.map((item) => ({
-            product: item.product?._id || item._id,
-            quantity: item.quantity || 1,
-            size: item.size,
-            price: item.product?.price || item.price,
-          })),
-          totalAmount: total,
-        })
+        }),
       ).unwrap();
       dispatch(
         addToast({
           id: Date.now(),
           type: "success",
           message: "Order placed successfully! 🎉",
-        })
+        }),
       );
       navigate("/orders");
     } catch (err) {
@@ -105,7 +146,7 @@ export default function Checkout() {
           id: Date.now(),
           type: "error",
           message: err?.message || err || "Failed to place order.",
-        })
+        }),
       );
     }
   };
@@ -155,8 +196,8 @@ export default function Checkout() {
                         isCompleted
                           ? "bg-green-500 text-white"
                           : isActive
-                          ? "bg-rose-600 text-white shadow-lg shadow-rose-600/30"
-                          : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"
+                            ? "bg-rose-600 text-white shadow-lg shadow-rose-600/30"
+                            : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"
                       }`}
                     >
                       {isCompleted ? (
@@ -199,6 +240,10 @@ export default function Checkout() {
                     <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-6">
                       Shipping Address
                     </h2>
+                    <p className="mb-5 text-sm text-zinc-500 dark:text-zinc-400">
+                      Saved profile details are pre-filled. You can edit any
+                      field for this delivery.
+                    </p>
                     <div className="space-y-5">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
@@ -286,6 +331,27 @@ export default function Checkout() {
                           {errors.city && (
                             <p className="mt-1 text-xs text-red-500">
                               {errors.city}
+                            </p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                            Country
+                          </label>
+                          <input
+                            type="text"
+                            value={shipping.country}
+                            onChange={handleShippingChange("country")}
+                            placeholder="India"
+                            className={`w-full rounded-xl border px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent ${
+                              errors.country
+                                ? "border-red-400"
+                                : "border-zinc-200 dark:border-zinc-700"
+                            }`}
+                          />
+                          {errors.country && (
+                            <p className="mt-1 text-xs text-red-500">
+                              {errors.country}
                             </p>
                           )}
                         </div>
@@ -424,6 +490,9 @@ export default function Checkout() {
                         {shipping.address}, {shipping.city}, {shipping.state} -{" "}
                         {shipping.zip}
                       </p>
+                      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                        {shipping.country}
+                      </p>
                     </div>
 
                     {/* Payment Summary */}
@@ -443,8 +512,8 @@ export default function Checkout() {
                         {payment === "cod"
                           ? "Cash on Delivery"
                           : payment === "upi"
-                          ? "UPI Payment"
-                          : "Credit / Debit Card"}
+                            ? "UPI Payment"
+                            : "Credit / Debit Card"}
                       </p>
                     </div>
 
@@ -483,7 +552,7 @@ export default function Checkout() {
                               </div>
                               <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                                 {formatPrice(
-                                  (product.price || 0) * (item.quantity || 1)
+                                  (product.price || 0) * (item.quantity || 1),
                                 )}
                               </p>
                             </div>

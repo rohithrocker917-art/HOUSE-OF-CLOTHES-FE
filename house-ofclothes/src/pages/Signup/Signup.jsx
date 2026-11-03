@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { Link, useNavigate } from "react-router";
-import { Eye, EyeOff, UserPlus, Sparkles } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Eye, EyeOff, UserPlus } from "lucide-react";
 import Layout from "../../components/layout/Layout";
 import { signupUser } from "../../redux/slices/authSlice";
+import { addItemToCart } from "../../redux/slices/cartSlice";
 import { addToast } from "../../redux/slices/uiSlice";
 
 function getPasswordStrength(password) {
@@ -28,7 +29,13 @@ const strengthColors = [
 export default function Signup() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading } = useSelector((state) => state.auth);
+  const buyNowItem = location.state?.buyNowItem;
+  const returnTo =
+    typeof location.state?.from === "string"
+      ? location.state.from
+      : location.state?.from?.pathname || "/";
 
   const [form, setForm] = useState({
     name: "",
@@ -43,14 +50,14 @@ export default function Signup() {
 
   const strength = useMemo(
     () => getPasswordStrength(form.password),
-    [form.password]
+    [form.password],
   );
 
   useEffect(() => {
-    if (user) {
-      navigate("/");
+    if (user && !buyNowItem) {
+      navigate(returnTo, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, buyNowItem, returnTo, navigate]);
 
   const validate = () => {
     const errs = {};
@@ -79,23 +86,26 @@ export default function Signup() {
           name: form.name,
           email: form.email,
           password: form.password,
-        })
+        }),
       ).unwrap();
+      if (buyNowItem) {
+        await dispatch(addItemToCart(buyNowItem)).unwrap();
+      }
       dispatch(
         addToast({
           id: Date.now(),
           type: "success",
           message: "Account created successfully! Welcome aboard.",
-        })
+        }),
       );
-      navigate("/");
+      navigate(returnTo, { replace: true });
     } catch (err) {
       dispatch(
         addToast({
           id: Date.now(),
           type: "error",
           message: err?.message || err || "Signup failed. Please try again.",
-        })
+        }),
       );
     }
   };
@@ -118,7 +128,6 @@ export default function Signup() {
           </div>
           <div className="relative flex flex-col justify-center px-16">
             <div className="inline-flex items-center gap-2 mb-8">
-              <Sparkles className="h-6 w-6 text-rose-400" />
               <span className="text-sm font-medium text-rose-300">
                 House of Clothes
               </span>
@@ -378,6 +387,7 @@ export default function Signup() {
 
             <Link
               to="/login"
+              state={location.state}
               className="w-full inline-flex items-center justify-center rounded-xl px-8 py-3.5 text-sm font-semibold text-zinc-700 dark:text-zinc-300 ring-1 ring-zinc-200 dark:ring-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
             >
               Sign In Instead

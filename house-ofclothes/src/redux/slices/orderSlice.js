@@ -1,6 +1,22 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import orderService from '../../services/orderService';
 
+const normalizeOrder = (response) =>
+  response?.data?.order ||
+  response?.order ||
+  response?.data ||
+  response;
+
+const normalizeOrders = (response) => {
+  const orders =
+    response?.orders ||
+    response?.data?.orders ||
+    response?.data?.data ||
+    response?.data ||
+    response;
+  return Array.isArray(orders) ? orders : [];
+};
+
 // ---------------------------------------------------------------------------
 // Async thunks
 // ---------------------------------------------------------------------------
@@ -9,7 +25,11 @@ export const placeOrder = createAsyncThunk(
   async (orderData, { rejectWithValue }) => {
     try {
       const data = await orderService.placeOrder(orderData);
-      return data; // { order, ... }
+      const order = normalizeOrder(data);
+      if (!order || typeof order !== 'object' || Array.isArray(order)) {
+        return rejectWithValue('The order service returned an invalid order.');
+      }
+      return order;
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || err.message || 'Failed to place order',
@@ -23,7 +43,7 @@ export const fetchMyOrders = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const data = await orderService.getMyOrders();
-      return data; // { orders, ... }
+      return normalizeOrders(data);
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || err.message || 'Failed to fetch orders',
@@ -62,8 +82,12 @@ const orderSlice = createSlice({
       })
       .addCase(placeOrder.fulfilled, (state, { payload }) => {
         state.loading = false;
-        state.currentOrder = payload.order || payload;
-        state.orders.unshift(payload.order || payload);
+        state.currentOrder = payload;
+        if (!Array.isArray(state.orders)) state.orders = [];
+        state.orders = [
+          payload,
+          ...state.orders.filter((order) => order._id !== payload._id),
+        ];
       })
       .addCase(placeOrder.rejected, (state, { payload }) => {
         state.loading = false;
@@ -78,7 +102,7 @@ const orderSlice = createSlice({
       })
       .addCase(fetchMyOrders.fulfilled, (state, { payload }) => {
         state.loading = false;
-        state.orders = payload.orders || payload || [];
+        state.orders = Array.isArray(payload) ? payload : [];
       })
       .addCase(fetchMyOrders.rejected, (state, { payload }) => {
         state.loading = false;

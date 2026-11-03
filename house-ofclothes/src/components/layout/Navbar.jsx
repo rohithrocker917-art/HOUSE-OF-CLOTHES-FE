@@ -1,249 +1,100 @@
-import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
 import {
-  Shirt,
   Search,
   Heart,
   ShoppingBag,
-  UserCircle,
   Menu,
-  X,
-  LogOut,
-  User,
-  Package,
-  ChevronDown,
-} from 'lucide-react';
-import { toggleSidebar } from '../../store/slices/uiSlice';
-import { logout } from '../../store/slices/authSlice';
-import ThemeToggle from '../common/ThemeToggle';
-
-const Navbar = () => {
+  UserRound,
+} from "lucide-react";
+import ThemeToggle from "../common/ThemeToggle";
+import { toggleSidebar } from "../../redux/slices/uiSlice";
+import { logout } from "../../redux/slices/authSlice";
+export default function Navbar() {
+  const [q, setQ] = useState("");
+  const nav = useNavigate();
   const dispatch = useDispatch();
-  const navigate = useNavigate();
-
-  const user = useSelector((state) => state.auth.user);
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  const totalCount = useSelector((state) => state.cart.totalCount);
-  const wishlistCount = useSelector((state) => state.wishlist.count);
-
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-
-  const userMenuRef = useRef(null);
-  const searchInputRef = useRef(null);
-
-  // Close user menu on outside click
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
-        setUserMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Focus search input when opened
-  useEffect(() => {
-    if (searchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [searchOpen]);
-
-  const handleSearch = (e) => {
+  const count = useSelector((s) => s.cart.totalCount || 0),
+    wish = useSelector((s) => s.wishlist.count || 0),
+    user = useSelector((s) => s.auth.user),
+    authed = useSelector((s) => s.auth.isAuthenticated);
+  const submit = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchQuery('');
-      setSearchOpen(false);
-    }
+    nav(`/products?search=${encodeURIComponent(q)}`);
   };
-
-  const handleLogout = () => {
-    dispatch(logout());
-    setUserMenuOpen(false);
-    navigate('/');
-  };
-
   return (
-    <header className="sticky top-0 z-50 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 transition-colors duration-300">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Left: Hamburger + Brand */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => dispatch(toggleSidebar())}
-              className="lg:hidden p-2 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-              aria-label="Open menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-
-            <Link to="/" className="flex items-center gap-2 group">
-              <Shirt className="w-7 h-7 text-rose-500 group-hover:rotate-12 transition-transform duration-300" />
-              <span className="text-lg sm:text-xl font-bold tracking-tight text-zinc-900 dark:text-white">
-                HOUSE <span className="text-rose-500">OF</span> CLOTHES
-              </span>
-            </Link>
-          </div>
-
-          {/* Center: Search bar (desktop) */}
-          <div className="hidden md:flex flex-1 max-w-md mx-8">
-            <form onSubmit={handleSearch} className="w-full relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products..."
-                className="w-full pl-10 pr-4 py-2 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 transition-all duration-200"
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-            </form>
-          </div>
-
-          {/* Right: Icons */}
-          <div className="flex items-center gap-1 sm:gap-2">
-            {/* Mobile search toggle */}
-            <button
-              onClick={() => setSearchOpen(!searchOpen)}
-              className="md:hidden p-2 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-              aria-label="Toggle search"
-            >
-              {searchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
-            </button>
-
-            {/* Theme toggle */}
+    <>
+      <header className="sticky top-0 z-40 border-b border-[#e6e3dc] bg-[#f8f7f3]/90 backdrop-blur-md dark:border-[#33352f] dark:bg-[#171815]/90">
+        <div className="mx-auto flex h-[66px] w-[calc(100%-24px)] max-w-[1320px] items-center gap-2 md:h-[78px] md:w-[calc(100%-48px)] md:gap-[34px]">
+          <button
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#22231f] transition hover:bg-[#e6e3dc] dark:text-[#f4f2ec] dark:hover:bg-[#33352f] min-[701px]:hidden"
+            onClick={() => dispatch(toggleSidebar())}
+            aria-label="Open menu"
+          >
+            <Menu className="h-[18px] w-[18px]" />
+          </button>
+          <Link
+            to="/"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[9px] font-bold tracking-[0.09em] md:gap-2.5 md:text-xs"
+          >
+            <span className="font-serif text-[27px] font-semibold tracking-[-0.08em] md:text-[32px]">
+              H<span className="text-[#9ebd42]">.</span>
+            </span>
+            <span className="leading-tight">
+              HOUSE OF CLOTHES
+              <small className="mt-1 block text-[7px] tracking-[0.22em] text-[#77766f] dark:text-[#a7a69e] md:text-[8px]">
+                STYLE, YOUR WAY
+              </small>
+            </span>
+          </Link>
+          <nav className="hidden gap-[25px] whitespace-nowrap text-xs text-[#77766f] dark:text-[#a7a69e] min-[1051px]:flex">
+            <Link className="transition hover:text-[#22231f] dark:hover:text-[#f4f2ec]" to="/products">Shop all</Link>
+            <Link className="transition hover:text-[#22231f] dark:hover:text-[#f4f2ec]" to="/products?category=mens-clothing">Men</Link>
+            <Link className="transition hover:text-[#22231f] dark:hover:text-[#f4f2ec]" to="/products?category=womens-clothing">Women</Link>
+            <Link className="transition hover:text-[#22231f] dark:hover:text-[#f4f2ec]" to="/products?category=accessories">Accessories</Link>
+          </nav>
+          <form
+            className="ml-auto hidden w-[220px] items-center gap-2 rounded-[30px] border border-[#e6e3dc] bg-white px-3 py-2.5 text-[#77766f] dark:border-[#33352f] dark:bg-[#20221e] dark:text-[#a7a69e] min-[701px]:flex min-[1051px]:w-[min(300px,30vw)]"
+            onSubmit={submit}
+          >
+            <Search size={17} className="shrink-0" />
+            <input
+              className="w-full border-0 bg-transparent text-[11px] text-[#22231f] outline-none dark:text-[#f4f2ec]"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search your next favourite…"
+            />
+            <kbd className="rounded border border-[#e6e3dc] px-1 text-[10px] dark:border-[#33352f]">↵</kbd>
+          </form>
+          <div className="ml-auto flex items-center gap-0.5 md:ml-0 md:gap-[7px]">
             <ThemeToggle />
-
-            {/* Wishlist */}
             <Link
+              className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-[#22231f] transition hover:bg-[#e6e3dc] dark:text-[#f4f2ec] dark:hover:bg-[#33352f]"
               to="/wishlist"
-              className="relative p-2 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
               aria-label="Wishlist"
             >
-              <Heart className="w-5 h-5" />
-              {wishlistCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-5 h-5 flex items-center justify-center text-[10px] font-bold text-white bg-rose-500 rounded-full animate-in zoom-in">
-                  {wishlistCount > 99 ? '99+' : wishlistCount}
-                </span>
-              )}
+              <Heart className="h-[18px] w-[18px]" />
+              <i className="absolute right-0 top-0 grid h-[15px] min-w-[15px] place-items-center rounded-full bg-[#d3ef72] text-[9px] not-italic text-[#22231f]">{wish}</i>
             </Link>
-
-            {/* Cart */}
             <Link
+              className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-[#22231f] transition hover:bg-[#e6e3dc] dark:text-[#f4f2ec] dark:hover:bg-[#33352f]"
               to="/cart"
-              className="relative p-2 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
               aria-label="Cart"
             >
-              <ShoppingBag className="w-5 h-5" />
-              {totalCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-5 h-5 flex items-center justify-center text-[10px] font-bold text-white bg-rose-500 rounded-full animate-in zoom-in">
-                  {totalCount > 99 ? '99+' : totalCount}
-                </span>
-              )}
+              <ShoppingBag className="h-[18px] w-[18px]" />
+              <i className="absolute right-0 top-0 grid h-[15px] min-w-[15px] place-items-center rounded-full bg-[#d3ef72] text-[9px] not-italic text-[#22231f]">{count}</i>
             </Link>
-
-            {/* User menu */}
-            <div className="relative" ref={userMenuRef}>
-              <button
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-1 p-2 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                aria-label="User menu"
-              >
-                <UserCircle className="w-5 h-5" />
-                {isAuthenticated && (
-                  <ChevronDown
-                    className={`hidden sm:block w-3 h-3 transition-transform duration-200 ${
-                      userMenuOpen ? 'rotate-180' : ''
-                    }`}
-                  />
-                )}
-              </button>
-
-              {/* Dropdown */}
-              {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-xl shadow-zinc-200/50 dark:shadow-zinc-900/50 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                  {isAuthenticated ? (
-                    <>
-                      <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
-                        <p className="text-sm font-semibold text-zinc-900 dark:text-white">
-                          Hi, {user?.name?.split(' ')[0] || 'User'} 👋
-                        </p>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
-                          {user?.email}
-                        </p>
-                      </div>
-                      <Link
-                        to="/profile"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-                      >
-                        <User className="w-4 h-4" />
-                        Profile
-                      </Link>
-                      <Link
-                        to="/orders"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-                      >
-                        <Package className="w-4 h-4" />
-                        My Orders
-                      </Link>
-                      <div className="border-t border-zinc-100 dark:border-zinc-800 mt-1 pt-1">
-                        <button
-                          onClick={handleLogout}
-                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                        >
-                          <LogOut className="w-4 h-4" />
-                          Logout
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <Link
-                        to="/login"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="block px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-                      >
-                        Login
-                      </Link>
-                      <Link
-                        to="/signup"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="block px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-                      >
-                        Sign Up
-                      </Link>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+            <Link
+              className="relative hidden h-9 w-9 items-center justify-center rounded-full text-[#22231f] transition hover:bg-[#e6e3dc] dark:text-[#f4f2ec] dark:hover:bg-[#33352f] min-[701px]:inline-flex"
+              to={authed ? "/profile" : "/login"}
+              aria-label="Account"
+            >
+              <UserRound className="h-[18px] w-[18px]" />
+            </Link>
           </div>
         </div>
-
-        {/* Mobile search bar (expandable) */}
-        {searchOpen && (
-          <div className="md:hidden pb-3 animate-in slide-in-from-top duration-200">
-            <form onSubmit={handleSearch} className="relative">
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products..."
-                className="w-full pl-10 pr-4 py-2.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 transition-all duration-200"
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-            </form>
-          </div>
-        )}
-      </nav>
-    </header>
+      </header>
+    </>
   );
-};
-
-export default Navbar;
+}

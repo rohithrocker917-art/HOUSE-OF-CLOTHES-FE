@@ -1,38 +1,43 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { User, Mail, Phone, MapPin, Save, Camera } from "lucide-react";
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Save,
+  Camera,
+  ClipboardList,
+  ArrowUpRight,
+} from "lucide-react";
 import Layout from "../../components/layout/Layout";
+import { Link } from "react-router-dom";
 import { updateUserProfile } from "../../redux/slices/authSlice";
 import { addToast } from "../../redux/slices/uiSlice";
+
+const getProfileForm = (user) => ({
+  name: user?.name || "",
+  email: user?.email || "",
+  phone: user?.phone || "",
+  address:
+    user?.address?.street ||
+    (typeof user?.address === "string" ? user.address : ""),
+  city: user?.address?.city || "",
+  state: user?.address?.state || "",
+  zip:
+    user?.address?.zipCode ||
+    user?.address?.zip ||
+    user?.address?.pincode ||
+    "",
+  country: user?.address?.country || "India",
+});
 
 export default function Profile() {
   const dispatch = useDispatch();
   const { user, loading } = useSelector((state) => state.auth);
 
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    address: "",
-    city: "",
-    state: "",
-    zip: "",
-  });
+  const [form, setForm] = useState(() => getProfileForm(user));
   const [isEditing, setIsEditing] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      setForm({
-        name: user.name || "",
-        email: user.email || "",
-        phone: user.phone || "",
-        address: user.address?.street || user.address || "",
-        city: user.address?.city || "",
-        state: user.address?.state || "",
-        zip: user.address?.zip || user.address?.pincode || "",
-      });
-    }
-  }, [user]);
 
   const handleChange = (field) => (e) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -41,13 +46,25 @@ export default function Profile() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await dispatch(updateUserProfile(form)).unwrap();
+      await dispatch(
+        updateUserProfile({
+          name: form.name,
+          phone: form.phone,
+          address: {
+            street: form.address,
+            city: form.city,
+            state: form.state,
+            zipCode: form.zip,
+            country: form.country,
+          },
+        }),
+      ).unwrap();
       dispatch(
         addToast({
           id: Date.now(),
           type: "success",
           message: "Profile updated successfully!",
-        })
+        }),
       );
       setIsEditing(false);
     } catch (err) {
@@ -56,7 +73,7 @@ export default function Profile() {
           id: Date.now(),
           type: "error",
           message: err?.message || err || "Failed to update profile.",
-        })
+        }),
       );
     }
   };
@@ -79,7 +96,7 @@ export default function Profile() {
             <div className="absolute inset-0">
               <div className="absolute top-0 right-0 w-60 h-60 rounded-full bg-rose-600 opacity-10 blur-[100px]" />
             </div>
-            <div className="relative flex flex-col sm:flex-row items-center gap-6">
+            <div className="relative flex flex-col sm:flex-row sm:items-center gap-6">
               {/* Avatar */}
               <div className="relative group">
                 <div className="flex h-24 w-24 items-center justify-center rounded-full bg-rose-600/20 ring-4 ring-rose-500/30 text-3xl font-bold text-rose-300">
@@ -89,11 +106,21 @@ export default function Profile() {
                   <Camera className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <div className="text-center sm:text-left">
-                <h1 className="text-2xl font-bold text-white">
-                  {user?.name || "User"}
-                </h1>
-                <p className="text-sm text-zinc-400 mt-1">{user?.email}</p>
+              <div className="flex flex-1 flex-col items-center gap-5 sm:flex-row sm:justify-between">
+                <div className="text-center sm:text-left">
+                  <h1 className="text-2xl font-bold text-white">
+                    {user?.name || "User"}
+                  </h1>
+                  <p className="text-sm text-zinc-400 mt-1">{user?.email}</p>
+                </div>
+                <Link
+                  to="/orders"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-zinc-900 shadow-sm transition-colors dark:bg-[#ed2c0a] dark:text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                >
+                  <ClipboardList className="h-4 w-4" />
+                  My Orders
+                  <ArrowUpRight className="h-4 w-4" />
+                </Link>
               </div>
             </div>
           </div>
@@ -178,7 +205,7 @@ export default function Profile() {
               </div>
 
               {/* City, State, Zip row */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
                     City
@@ -218,6 +245,19 @@ export default function Profile() {
                     className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                    Country
+                  </label>
+                  <input
+                    type="text"
+                    value={form.country}
+                    onChange={handleChange("country")}
+                    disabled={!isEditing}
+                    placeholder="India"
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                  />
+                </div>
               </div>
 
               {/* Actions */}
@@ -239,17 +279,7 @@ export default function Profile() {
                     type="button"
                     onClick={() => {
                       setIsEditing(false);
-                      if (user) {
-                        setForm({
-                          name: user.name || "",
-                          email: user.email || "",
-                          phone: user.phone || "",
-                          address: user.address?.street || user.address || "",
-                          city: user.address?.city || "",
-                          state: user.address?.state || "",
-                          zip: user.address?.zip || user.address?.pincode || "",
-                        });
-                      }
+                      setForm(getProfileForm(user));
                     }}
                     className="rounded-xl px-6 py-3 text-sm font-medium text-zinc-700 dark:text-zinc-300 ring-1 ring-zinc-200 dark:ring-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
                   >

@@ -1,15 +1,22 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { Link, useNavigate } from "react-router";
-import { Eye, EyeOff, LogIn, Sparkles } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Eye, EyeOff, LogIn } from "lucide-react";
 import Layout from "../../components/layout/Layout";
 import { loginUser } from "../../redux/slices/authSlice";
+import { addItemToCart } from "../../redux/slices/cartSlice";
 import { addToast } from "../../redux/slices/uiSlice";
 
 export default function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading } = useSelector((state) => state.auth);
+  const buyNowItem = location.state?.buyNowItem;
+  const returnTo =
+    typeof location.state?.from === "string"
+      ? location.state.from
+      : location.state?.from?.pathname || "/";
 
   const [form, setForm] = useState({
     email: "",
@@ -20,10 +27,10 @@ export default function Login() {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (user) {
-      navigate("/");
+    if (user && !buyNowItem) {
+      navigate(returnTo, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, buyNowItem, returnTo, navigate]);
 
   const validate = () => {
     const errs = {};
@@ -44,23 +51,26 @@ export default function Login() {
 
     try {
       await dispatch(
-        loginUser({ email: form.email, password: form.password })
+        loginUser({ email: form.email, password: form.password }),
       ).unwrap();
+      if (buyNowItem) {
+        await dispatch(addItemToCart(buyNowItem)).unwrap();
+      }
       dispatch(
         addToast({
           id: Date.now(),
           type: "success",
           message: "Welcome back! Login successful.",
-        })
+        }),
       );
-      navigate("/");
+      navigate(returnTo, { replace: true });
     } catch (err) {
       dispatch(
         addToast({
           id: Date.now(),
           type: "error",
           message: err?.message || err || "Login failed. Please try again.",
-        })
+        }),
       );
     }
   };
@@ -83,7 +93,6 @@ export default function Login() {
           </div>
           <div className="relative flex flex-col justify-center px-16">
             <div className="inline-flex items-center gap-2 mb-8">
-              <Sparkles className="h-6 w-6 text-rose-400" />
               <span className="text-sm font-medium text-rose-300">
                 House of Clothes
               </span>
@@ -237,6 +246,7 @@ export default function Login() {
 
             <Link
               to="/signup"
+              state={location.state}
               className="w-full inline-flex items-center justify-center rounded-xl px-8 py-3.5 text-sm font-semibold text-zinc-700 dark:text-zinc-300 ring-1 ring-zinc-200 dark:ring-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
             >
               Create an Account

@@ -16,3 +16,5 @@ export const wishlistService = {
     return res.data;
   },
 };
+
+export default wishlistService;

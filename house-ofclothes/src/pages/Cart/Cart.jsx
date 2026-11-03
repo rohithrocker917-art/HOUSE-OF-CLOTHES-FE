@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import {
   Minus,
   Plus,
@@ -20,40 +20,68 @@ import { formatPrice } from "../../utils/formatPrice";
 
 export default function Cart() {
   const dispatch = useDispatch();
-  const { items, totalCount, totalAmount, loading } = useSelector(
-    (state) => state.cart
+  const { items, totalCount, totalAmount, loading, error } = useSelector(
+    (state) => state.cart,
   );
 
   useEffect(() => {
     dispatch(fetchCart());
   }, [dispatch]);
 
-  const handleUpdateQty = (itemId, qty) => {
+  const handleUpdateQty = async (item, qty) => {
     if (qty < 1) return;
-    dispatch(updateCartItemQty({ itemId, quantity: qty }));
+    const productId = item.product?._id || item.productId || item._id;
+    try {
+      await dispatch(
+        updateCartItemQty({
+          productId,
+          quantity: qty,
+          size: item.size,
+          color: item.color,
+        }),
+      ).unwrap();
+    } catch (updateError) {
+      dispatch(
+        addToast({
+          type: "error",
+          message: updateError || "Unable to update the cart.",
+        }),
+      );
+    }
   };
 
-  const handleRemove = (itemId) => {
-    dispatch(removeCartItem(itemId));
-    dispatch(
-      addToast({
-        id: Date.now(),
-        type: "success",
-        message: "Item removed from cart",
-      })
-    );
+  const handleRemove = async (item) => {
+    try {
+      await dispatch(removeCartItem(item)).unwrap();
+      dispatch(
+        addToast({
+          type: "success",
+          message: "Item removed from cart",
+        }),
+      );
+    } catch (removeError) {
+      dispatch(
+        addToast({
+          type: "error",
+          message: removeError || "Unable to remove the item.",
+        }),
+      );
+    }
   };
 
-  const subtotal = totalAmount || items?.reduce((sum, item) => {
-    const price = item.product?.price || item.price || 0;
-    return sum + price * (item.quantity || 1);
-  }, 0) || 0;
+  const subtotal =
+    totalAmount ||
+    items?.reduce((sum, item) => {
+      const price = item.product?.price || item.price || 0;
+      return sum + price * (item.quantity || 1);
+    }, 0) ||
+    0;
 
   const shipping = subtotal > 999 ? 0 : 99;
   const tax = Math.round(subtotal * 0.05);
   const total = subtotal + shipping + tax;
 
-  if (!loading && (!items || items.length === 0)) {
+  if (!loading && !error && (!items || items.length === 0)) {
     return (
       <Layout>
         <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 bg-white dark:bg-zinc-950">
@@ -90,6 +118,25 @@ export default function Cart() {
             {totalCount || items?.length || 0} items in your cart
           </p>
 
+          {error && (
+            <div
+              role="alert"
+              className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
+            >
+              <span>
+                {typeof error === "string"
+                  ? error
+                  : "Unable to load your cart."}
+              </span>
+              <button
+                onClick={() => dispatch(fetchCart())}
+                className="font-semibold underline underline-offset-4"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Cart Items */}
             <div className="flex-1 space-y-4">
@@ -109,21 +156,28 @@ export default function Cart() {
                   ))
                 : items?.map((item) => {
                     const product = item.product || item;
+                    const productId = product._id || item.productId || item._id;
+                    const productName =
+                      product.title || product.name || "Everyday essential";
                     const image =
-                      product.images?.[0] || product.image || "/placeholder.jpg";
+                      product.thumbnail ||
+                      product.images?.[0] ||
+                      product.image ||
+                      item.image ||
+                      "/placeholder.jpg";
                     return (
                       <div
-                        key={item._id || product._id}
+                        key={`${productId}-${item.size || ""}-${item.color || ""}`}
                         className="flex gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl bg-white dark:bg-zinc-900 ring-1 ring-zinc-100 dark:ring-zinc-800 transition-shadow hover:shadow-md"
                       >
                         {/* Image */}
                         <Link
-                          to={`/products/${product._id}`}
+                          to={`/product/${productId}`}
                           className="shrink-0 w-24 h-32 sm:w-28 sm:h-36 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800"
                         >
                           <img
                             src={image}
-                            alt={product.name}
+                            alt={productName}
                             className="w-full h-full object-cover"
                           />
                         </Link>
@@ -132,10 +186,10 @@ export default function Cart() {
                         <div className="flex-1 min-w-0 flex flex-col justify-between">
                           <div>
                             <Link
-                              to={`/products/${product._id}`}
+                              to={`/product/${productId}`}
                               className="text-sm sm:text-base font-semibold text-zinc-900 dark:text-zinc-100 hover:text-rose-600 dark:hover:text-rose-400 transition-colors line-clamp-2"
                             >
-                              {product.name}
+                              {productName}
                             </Link>
                             {item.size && (
                               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -153,8 +207,8 @@ export default function Cart() {
                               <button
                                 onClick={() =>
                                   handleUpdateQty(
-                                    item._id,
-                                    (item.quantity || 1) - 1
+                                    item,
+                                    (item.quantity || 1) - 1,
                                   )
                                 }
                                 disabled={item.quantity <= 1}
@@ -168,8 +222,8 @@ export default function Cart() {
                               <button
                                 onClick={() =>
                                   handleUpdateQty(
-                                    item._id,
-                                    (item.quantity || 1) + 1
+                                    item,
+                                    (item.quantity || 1) + 1,
                                   )
                                 }
                                 className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded-r-lg"
@@ -180,7 +234,7 @@ export default function Cart() {
 
                             {/* Remove */}
                             <button
-                              onClick={() => handleRemove(item._id)}
+                              onClick={() => handleRemove(item)}
                               className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                             >
                               <Trash2 className="h-4 w-4" />
