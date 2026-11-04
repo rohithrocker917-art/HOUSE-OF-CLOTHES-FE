@@ -89,24 +89,31 @@ function getProductPrice(product) {
 }
 
 function getOriginalPrice(product) {
-  const price = Number(
-    product?.originalPrice ??
-      product?.original_price ??
-      product?.mrp ??
-      product?.price ??
-      0,
+  const price = getProductPrice(product);
+  const listedPrice = Number(
+    product?.originalPrice ?? product?.original_price ?? product?.mrp,
   );
 
-  return Number.isFinite(price) ? price : 0;
+  if (Number.isFinite(listedPrice) && listedPrice > price) return listedPrice;
+
+  const discount = Number(product?.discountPercentage);
+  if (Number.isFinite(discount) && discount > 0 && discount < 100) {
+    return price / (1 - discount / 100);
+  }
+
+  return price;
 }
 
 function getDiscount(product) {
   const price = getProductPrice(product);
   const original = getOriginalPrice(product);
 
-  if (original <= price || original <= 0) return 0;
+  if (original > price && original > 0) {
+    return Math.round(((original - price) / original) * 100);
+  }
 
-  return Math.round(((original - price) / original) * 100);
+  const discount = Number(product?.discountPercentage);
+  return Number.isFinite(discount) ? Math.min(100, Math.max(0, Math.round(discount))) : 0;
 }
 
 function SkeletonDetails() {
@@ -245,6 +252,10 @@ export default function ProductDetails() {
   const price = getProductPrice(product);
   const originalPrice = getOriginalPrice(product);
   const discount = getDiscount(product);
+  const stock = Number(product?.stock);
+  const hasStock = Number.isFinite(stock);
+  const isOutOfStock = hasStock && stock <= 0;
+  const maxQuantity = hasStock ? Math.min(10, stock) : 10;
 
   const availableSizes =
     Array.isArray(product?.sizes) && product.sizes.length
@@ -273,6 +284,10 @@ export default function ProductDetails() {
 
   const handleAddToCart = async () => {
     if (!product || !productId) return;
+    if (isOutOfStock) {
+      dispatch(addToast({ type: "error", message: "This product is out of stock." }));
+      return;
+    }
 
     if (product.sizes?.length && !selectedSize) {
       dispatch(
@@ -340,6 +355,10 @@ export default function ProductDetails() {
 
   const handleBuyNow = async () => {
     if (!product || !productId) return;
+    if (isOutOfStock) {
+      dispatch(addToast({ type: "error", message: "This product is out of stock." }));
+      return;
+    }
 
     if (product.sizes?.length && !selectedSize) {
       dispatch(
@@ -579,9 +598,9 @@ export default function ProductDetails() {
                         className="fill-amber-400 text-amber-400"
                       />
                       <span>{Number(product.rating).toFixed(1)}</span>
-                      <span className="text-stone-400">
+                      {/* <span className="text-stone-400">
                         ({product.numReviews || product.reviews?.length || 0})
-                      </span>
+                      </span> */}
                     </div>
                   )}
                 </div>
@@ -609,6 +628,24 @@ export default function ProductDetails() {
                     </>
                   )}
                 </div>
+
+                {hasStock && (
+                  <p
+                    className={`mt-3 text-xs font-medium ${
+                      isOutOfStock
+                        ? "text-red-600 dark:text-red-400"
+                        : stock < 10
+                          ? "text-amber-700 dark:text-amber-400"
+                          : "text-green-700 dark:text-green-400"
+                    }`}
+                  >
+                    {isOutOfStock
+                      ? "Out of stock"
+                      : stock < 10
+                        ? `Only ${stock} left in stock`
+                        : "In stock"}
+                  </p>
+                )}
 
                 <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
                   Inclusive of all taxes
@@ -679,9 +716,9 @@ export default function ProductDetails() {
 
                     <button
                       onClick={() =>
-                        setQuantity((value) => Math.min(10, value + 1))
+                        setQuantity((value) => Math.min(maxQuantity, value + 1))
                       }
-                      disabled={quantity >= 10}
+                      disabled={quantity >= maxQuantity || isOutOfStock}
                       className="p-3 transition hover:bg-stone-200 disabled:opacity-40 dark:hover:bg-zinc-800"
                     >
                       <Plus size={14} />
@@ -693,17 +730,19 @@ export default function ProductDetails() {
                 <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
                   <button
                     onClick={handleAddToCart}
+                    disabled={isOutOfStock}
                     className="flex items-center justify-center gap-3 border border-stone-300 px-6 py-4 text-sm font-medium transition hover:bg-stone-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
                   >
                     <ShoppingBag size={17} />
-                    Add to bag
+                    {isOutOfStock ? "Out of stock" : "Add to bag"}
                   </button>
 
                   <button
                     onClick={handleBuyNow}
+                    disabled={isOutOfStock}
                     className="flex items-center justify-center gap-3 bg-[#24231f] px-6 py-4 text-sm font-medium text-white transition hover:bg-black dark:bg-white dark:text-black dark:hover:bg-stone-200"
                   >
-                    Buy now
+                    {isOutOfStock ? "Out of stock" : "Buy now"}
                   </button>
 
                   <button
