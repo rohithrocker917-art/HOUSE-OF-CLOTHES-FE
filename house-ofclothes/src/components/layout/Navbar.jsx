@@ -7,6 +7,7 @@ import {
   ShoppingBag,
   Menu,
   UserRound,
+  LogOut,
 } from "lucide-react";
 import ThemeToggle from "../common/ThemeToggle";
 import { toggleSidebar } from "../../redux/slices/uiSlice";
@@ -17,7 +18,6 @@ export default function Navbar() {
   const dispatch = useDispatch();
   const count = useSelector((s) => s.cart.totalCount || 0),
     wish = useSelector((s) => s.wishlist.count || 0),
-    user = useSelector((s) => s.auth.user),
     authed = useSelector((s) => s.auth.isAuthenticated);
   const submit = (e) => {
     e.preventDefault();
@@ -92,6 +92,20 @@ export default function Navbar() {
             >
               <UserRound className="h-[18px] w-[18px]" />
             </Link>
+            {authed && (
+              <button
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#22231f] transition hover:bg-[#e6e3dc] dark:text-[#f4f2ec] dark:hover:bg-[#33352f]"
+                type="button"
+                onClick={() => {
+                  dispatch(logout());
+                  nav("/login");
+                }}
+                aria-label="Log out"
+                title="Log out"
+              >
+                <LogOut className="h-[18px] w-[18px]" />
+              </button>
+            )}
           </div>
         </div>
       </header>
